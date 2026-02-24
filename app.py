@@ -85,50 +85,34 @@ def scrape():
     if "user" not in session:
         return redirect("/")
 
-    url = request.form["url"]
     limit = int(request.form["limit"])
-    keyword = request.form["keyword"].lower()
-    pages = int(request.form["pages"])
-    clear_data = request.form.get("clear")
 
-    # Clear old data if checked
-    if clear_data:
-        cursor.execute("DELETE FROM books")
-        db.commit()
+    response = requests.get("http://books.toscrape.com/catalogue/page-1.html")
+    soup = BeautifulSoup(response.text, "html.parser")
+
+    books = soup.find_all("article", class_="product_pod")
 
     count = 0
 
-    for page in range(1, pages + 1):
+    for book in books:
+        if count >= limit:
+            break
 
-        page_url = url.replace("page-1", f"page-{page}")
-        response = requests.get(page_url)
-        soup = BeautifulSoup(response.text, "html.parser")
+        title = book.h3.a["title"]
+        price = book.find("p", class_="price_color").text
+        availability = book.find("p", class_="instock availability").text.strip()
+        rating = book.find("p")["class"][1]
 
-        books = soup.find_all("article", class_="product_pod")
+        sql = """
+        INSERT INTO books (title, price, rating, availability)
+        VALUES (%s, %s, %s, %s)
+        """
+        cursor.execute(sql, (title, price, rating, availability))
+        count += 1
 
-        for book in books:
-            if count >= limit:
-                break
-
-            title = book.h3.a["title"]
-            price = book.find("p", class_="price_color").text
-            availability = book.find("p", class_="instock availability").text.strip()
-            rating = book.find("p")["class"][1]
-
-            if keyword and keyword not in title.lower():
-                continue
-
-            sql = """
-            INSERT INTO books (title, price, rating, availability)
-            VALUES (%s, %s, %s, %s)
-            """
-            cursor.execute(sql, (title, price, rating, availability))
-            db.commit()
-
-            count += 1
+    db.commit()
 
     return redirect("/dashboard")
-
 
 
 @app.route("/download")
