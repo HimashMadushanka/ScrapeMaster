@@ -2,6 +2,8 @@ from flask import Flask, render_template, request, redirect, session
 import mysql.connector
 import requests
 from bs4 import BeautifulSoup
+import csv
+from flask import Response
 
 app = Flask(__name__)
 app.secret_key = "secretkey"
@@ -78,30 +80,75 @@ def dashboard():
 # ==========================
 # Run Scraper
 # ==========================
-@app.route("/scrape")
+@app.route("/scrape", methods=["POST"])
 def scrape():
-    url = "http://books.toscrape.com/"
-    response = requests.get(url)
-    soup = BeautifulSoup(response.text, "html.parser")
+    if "user" not in session:
+        return redirect("/")
 
-    books = soup.find_all("article", class_="product_pod")
+    url = request.form["url"]
+    limit = int(request.form["limit"])
+    keyword = request.form["keyword"].lower()
+    pages = int(request.form["pages"])
+    clear_data = request.form.get("clear")
 
-    for book in books:
-        title = book.h3.a["title"]
-        price = book.find("p", class_="price_color").text
-        availability = book.find("p", class_="instock availability").text.strip()
-        rating = book.find("p")["class"][1]
-
-        sql = """
-        INSERT INTO books (title, price, rating, availability)
-        VALUES (%s, %s, %s, %s)
-        """
-        cursor.execute(sql, (title, price, rating, availability))
+    # Clear old data if checked
+    if clear_data:
+        cursor.execute("DELETE FROM books")
         db.commit()
+
+    count = 0
+
+    for page in range(1, pages + 1):
+
+        page_url = url.replace("page-1", f"page-{page}")
+        response = requests.get(page_url)
+        soup = BeautifulSoup(response.text, "html.parser")
+
+        books = soup.find_all("article", class_="product_pod")
+
+        for book in books:
+            if count >= limit:
+                break
+
+            title = book.h3.a["title"]
+            price = book.find("p", class_="price_color").text
+            availability = book.find("p", class_="instock availability").text.strip()
+            rating = book.find("p")["class"][1]
+
+            if keyword and keyword not in title.lower():
+                continue
+
+            sql = """
+            INSERT INTO books (title, price, rating, availability)
+            VALUES (%s, %s, %s, %s)
+            """
+            cursor.execute(sql, (title, price, rating, availability))
+            db.commit()
+
+            count += 1
 
     return redirect("/dashboard")
 
 
+
+@app.route("/download")
+def download():
+    if "user" not in session:
+        return redirect("/")
+
+    cursor.execute("SELECT * FROM books")
+    books = cursor.fetchall()
+
+    def generate():
+        data = csv.writer(open("books.csv", "w", newline=""))
+        yield "Title,Price,Rating,Availability\n"
+        for book in books:
+            row = f"{book['title']},{book['price']},{book['rating']},{book['availability']}\n"
+            yield row
+
+    return Response(generate(),
+                    mimetype="text/csv",
+                    headers={"Content-Disposition": "attachment;filename=books.csv"})
 # ==========================
 # Logout
 # ==========================

@@ -1,33 +1,64 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Dashboard</title>
+    <title>Advanced Scraper Dashboard</title>
 </head>
 <body>
-    <h2>Welcome {{ user }}</h2>
 
-    <a href="/scrape">Run Scraper</a> |
-    <a href="/logout">Logout</a>
+<h2>Welcome {{ user }}</h2>
 
-    <h3>Scraped Books</h3>
+<a href="/logout">Logout</a>
+<hr>
 
-    <table border="1">
-        <tr>
-            <th>Title</th>
-            <th>Price</th>
-            <th>Rating</th>
-            <th>Availability</th>
-        </tr>
+<h3>Advanced Scraper</h3>
 
-        {% for book in books %}
-        <tr>
-            <td>{{ book.title }}</td>
-            <td>{{ book.price }}</td>
-            <td>{{ book.rating }}</td>
-            <td>{{ book.availability }}</td>
-        </tr>
-        {% endfor %}
-    </table>
+<form action="/scrape" method="POST">
+
+    <label>Website URL:</label><br>
+    <input type="text" name="url" required><br><br>
+
+    <label>Number of Products:</label><br>
+    <input type="number" name="limit" required><br><br>
+
+    <label>Keyword (optional):</label><br>
+    <input type="text" name="keyword"><br><br>
+
+    <label>Scrape Pages:</label><br>
+    <input type="number" name="pages" value="1"><br><br>
+
+    <label>
+        <input type="checkbox" name="clear">
+        Clear Old Data
+    </label><br><br>
+
+    <button type="submit">Start Scraping</button>
+
+</form>
+
+<hr>
+
+<h3>Scraped Books</h3>
+
+<a href="/download">Download CSV</a>
+
+<table border="1">
+<tr>
+    <th>Title</th>
+    <th>Price</th>
+    <th>Rating</th>
+    <th>Availability</th>
+</tr>
+
+{% for book in books %}
+<tr>
+    <td>{{ book.title }}</td>
+    <td>{{ book.price }}</td>
+    <td>{{ book.rating }}</td>
+    <td>{{ book.availability }}</td>
+</tr>
+{% endfor %}
+
+</table>
 
 </body>
 </html>
