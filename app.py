@@ -12,7 +12,7 @@ app.secret_key = "secretkey"
 db = mysql.connector.connect(
     host="localhost",
     user="root",
-    password="",   # IMPORTANT: leave empty
+    password="",   
     database="scraper_app"
 )
 cursor = db.cursor(dictionary=True)
@@ -114,7 +114,9 @@ def scrape():
 
     return redirect("/dashboard")
 
-
+# ==========================
+# download CSV
+# ==========================
 @app.route("/download")
 def download():
     if "user" not in session:
